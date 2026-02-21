@@ -7,9 +7,24 @@ This plugin brings a straightforward Sudoku experience to KOReader so you can so
 - Controls optimized for touch
 - Automatic progress saving
 
+Forked to add several QoL improvements (with help from Google Gemini):
+* True RGB32 color support for color E-Ink displays (red errors, customizable active cell background)
+* Optional auto-remove notes feature (clears from row/col/box)
+* Faux-bold styling for given numbers to improve contrast on high-DPI screens
+* Automatic portrait mode lock during gameplay (restores previous orientation on exit)
+* Clean, centered status bar without coordinates
+
+(Also incorporates @appel's great features):
+* Highlight selected number across the board
+* Grey out numbers that are complete
+* Refined font size to prevent note overlap
+
+Huge thanks to the original developer and @appel for the great foundation!
+
 ## Installation
 1. Copy the `sudoku.koplugin` folder into KOReader's `plugins` directory.
 2. Restart the KOReader.
 
 ## Credits
-This project was created with assistance from Windsurf (AI).
+* The original foundation of this project was created with assistance from Windsurf (AI).
+* This fork's improvements were developed with assistance from Google Gemini (AI).
