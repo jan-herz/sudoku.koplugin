@@ -35,6 +35,25 @@ local DIFFICULTY_LABELS = {
 local COLOR_ERROR_BG = Blitbuffer.colorFromString("#FF0000")
 local COLOR_DONE_TEXT = Blitbuffer.COLOR_GRAY_9
 
+local function darkenHexColor(hex, factor)
+    if not hex or type(hex) ~= "string" or not hex:match("^#%x%x%x%x%x%x$") then
+        return "#A0A0A0"
+    end
+    local r = tonumber(hex:sub(2, 3), 16)
+    local g = tonumber(hex:sub(4, 5), 16)
+    local b = tonumber(hex:sub(6, 7), 16)
+
+    r = math.floor(r * factor)
+    g = math.floor(g * factor)
+    b = math.floor(b * factor)
+
+    r = math.max(0, math.min(255, r))
+    g = math.max(0, math.min(255, g))
+    b = math.max(0, math.min(255, b))
+
+    return string.format("#%02X%02X%02X", r, g, b)
+end
+
 local function emptyGrid()
     local grid = {}
     for r = 1, 9 do
@@ -465,7 +484,7 @@ function SudokuBoard:setValue(value, auto_remove)
     self.user[row][col] = new_value
     self:clearNotes(row, col)
     self:clearWrongMark(row, col)
-    
+
     if auto_remove and new_value ~= 0 then
         local box_row = math.floor((row - 1) / 3) * 3 + 1
         local box_col = math.floor((col - 1) / 3) * 3 + 1
@@ -662,10 +681,10 @@ function SudokuBoardWidget:init()
     self.size = math.floor(math.min(Screen:getWidth(), Screen:getHeight()) * 0.82)
     self.dimen = Geom:new{ w = self.size, h = self.size }
     self.paint_rect = Geom:new{ x = 0, y = 0, w = self.size, h = self.size }
-    
+
     self.number_face = Font:getFace("cfont", math.max(16, math.floor(self.size / 25)))
     self.note_face = Font:getFace("smallinfofont", math.max(12, math.floor(self.size / 55)))
-    
+
     self.ges_events = {
         Tap = {
             GestureRange:new{
@@ -723,43 +742,47 @@ function SudokuBoardWidget:paintTo(bb, x, y)
     if not self.board then
         return
     end
-    
+
     local active_bg_hex = self.plugin.settings:readSetting("user_bg_color") or "#E0E0FF"
     local COLOR_ACTIVE_BG = Blitbuffer.colorFromString(active_bg_hex) or Blitbuffer.COLOR_GRAY_C
+
+    local darker_hex = darkenHexColor(active_bg_hex, 0.75) -- "Highlight matching numbers" color: 0.9 is lighter, 0.6 is darker
+    local band_highlight = Blitbuffer.colorFromString(darker_hex) or Blitbuffer.COLOR_GRAY_9
 
     self.paint_rect = Geom:new{ x = x, y = y, w = self.dimen.w, h = self.dimen.h }
     local cell = self.dimen.w / 9
     bb:paintRect(x, y, self.dimen.w, self.dimen.h, Blitbuffer.COLOR_WHITE)
     local sel_row, sel_col = self.board:getSelection()
-    local band_highlight = Blitbuffer.COLOR_GRAY_9
-    
+
     local selected_value = self.board:getWorkingValue(sel_row, sel_col)
-    if selected_value and selected_value ~= 0 then
+    local do_highlight = self.plugin.settings:readSetting("highlight_matching") ~= false
+
+    if do_highlight and selected_value and selected_value ~= 0 then
         for r = 1, 9 do
             for c = 1, 9 do
                 local cell_value = self.board:getWorkingValue(r, c)
                 if cell_value == selected_value then
-                    bb:paintRect(x + (c - 1) * cell, y + (r - 1) * cell, cell, cell, band_highlight)
+                    bb:paintRectRGB32(x + (c - 1) * cell, y + (r - 1) * cell, cell, cell, band_highlight)
                 end
             end
         end
     end
 
     bb:paintRectRGB32(x + (sel_col - 1) * cell, y + (sel_row - 1) * cell, cell, cell, COLOR_ACTIVE_BG)
-    
+
     for i = 0, 9 do
         local thickness = (i % 3 == 0) and Size.line.thick or Size.line.thin
         drawLine(bb, x + math.floor(i * cell), y, thickness, self.dimen.h, Blitbuffer.COLOR_BLACK)
         drawLine(bb, x, y + math.floor(i * cell), self.dimen.w, thickness, Blitbuffer.COLOR_BLACK)
     end
-    
+
     for row = 1, 9 do
         for col = 1, 9 do
             local cell_x = x + (col - 1) * cell
             local cell_y = y + (row - 1) * cell
             local value, is_given = self.board:getDisplayValue(row, col)
             local notes = self.board:getCellNotes(row, col)
-            
+
             local is_error = self.board:isConflict(row, col) or self.board:hasWrongMark(row, col)
             local is_selected = (row == sel_row and col == sel_col)
 
@@ -769,15 +792,15 @@ function SudokuBoardWidget:paintTo(bb, x, y)
 
             if value then
                 local color
-                
+
                 if is_error then
                     color = Blitbuffer.COLOR_WHITE
                 elseif self.board:isShowingSolution() and not is_given then
                     color = Blitbuffer.COLOR_GRAY_4
                 else
-                    color = Blitbuffer.COLOR_BLACK 
+                    color = Blitbuffer.COLOR_BLACK
                 end
-                
+
                 if not is_error and not is_selected and self.board:isDigitComplete(value) then
                     color = COLOR_DONE_TEXT
                 end
@@ -791,7 +814,7 @@ function SudokuBoardWidget:paintTo(bb, x, y)
                 local text_w = metrics.x
                 local baseline = cell_y + math.floor((cell + metrics.y_top - metrics.y_bottom) / 2)
                 local text_x = cell_x + math.floor((cell - text_w) / 2)
-                
+
                 if is_given then
                     local off = math.max(1, math.floor(cell / 20))
                     RenderText:renderUtf8Text(bb, text_x - off, baseline, self.number_face, text, false, false, color)
@@ -803,7 +826,7 @@ function SudokuBoardWidget:paintTo(bb, x, y)
                     RenderText:renderUtf8Text(bb, text_x - off, baseline + off, self.number_face, text, false, false, color)
                     RenderText:renderUtf8Text(bb, text_x + off, baseline + off, self.number_face, text, false, false, color)
                 end
-                
+
                 RenderText:renderUtf8Text(bb, text_x, baseline, self.number_face, text, false, false, color)
             else
                 if notes then
@@ -818,10 +841,10 @@ function SudokuBoardWidget:paintTo(bb, x, y)
                             local note_metrics = RenderText:sizeUtf8Text(0, mini, self.note_face, note_text, true, false)
                             local note_baseline = mini_y + math.floor((mini + note_metrics.y_top - note_metrics.y_bottom) / 2)
                             local note_x = mini_x + math.floor((mini - note_metrics.x) / 2)
-                            
+
                             local note_color = Blitbuffer.COLOR_GRAY_2
                             if is_selected then note_color = Blitbuffer.COLOR_BLACK end
-                            
+
                             RenderText:renderUtf8Text(bb, note_x, note_baseline, self.note_face, note_text, true, false, note_color)
                         end
                     end
@@ -842,7 +865,7 @@ function SudokuScreen:init()
     if Device:hasKeys() then
         self.key_events.Close = { { Device.input.group.Back } }
     end
-    
+
     local board_size = math.floor(math.min(Screen:getWidth(), Screen:getHeight()) * 0.82)
     self.status_text = TextBoxWidget:new{
         text = _("Tap a cell, then pick a number."),
@@ -850,7 +873,7 @@ function SudokuScreen:init()
         width = board_size,
         alignment = "center",
     }
-    
+
     self.board_widget = SudokuBoardWidget:new{
         board = self.board,
         plugin = self.plugin,
@@ -975,7 +998,7 @@ function SudokuScreen:buildLayout()
     }
     self.note_button = keypad:getButtonById("note_button")
     self.undo_button = keypad:getButtonById("undo_button")
-    
+
     for digit = 1, 9 do
         self.digit_buttons[digit] = keypad:getButtonById("digit_" .. tostring(digit))
     end
@@ -1100,18 +1123,18 @@ function SudokuScreen:updateStatus(message)
     else
         local remaining = self.board:getRemainingCells()
         status = T(_("Empty cells: %1"), remaining)
-        
+
         local parts = {}
         if self.board:isShowingSolution() then
             table.insert(parts, _("Showing result"))
         elseif self.board:isSolved() then
             table.insert(parts, _("Congratulations! Puzzle solved."))
         end
-        
+
         if self.note_mode then
             table.insert(parts, _("Note mode ON"))
         end
-        
+
         if #parts > 0 then
             status = status .. "  ·  " .. table.concat(parts, "  ·  ")
         end
@@ -1136,10 +1159,10 @@ function SudokuScreen:onDigit(value)
         self:updateDigitButtons()
         return
     end
-    
+
     local auto_remove = self.plugin.settings:readSetting("auto_remove_notes") == true
     local ok, err = self.board:setValue(value, auto_remove)
-    
+
     if not ok then
         self:updateStatus(err)
         return
@@ -1198,9 +1221,10 @@ end
 
 function SudokuScreen:checkProgress()
     local has_error = self.board:updateWrongMarks()
+
     self.board_widget:refresh()
     self.plugin:saveState()
-    
+
     if self.board:isSolved() then
         self:updateStatus(_("Congratulations! Puzzle solved."))
     elseif has_error then
@@ -1256,6 +1280,19 @@ function Sudoku:addToMainMenu(menu_items)
                 text = _("Play Sudoku"),
                 callback = function()
                     self:showGame()
+                end,
+            },
+            {
+                text = _("Highlight matching numbers"),
+                checked_func = function() return self.settings:readSetting("highlight_matching") ~= false end,
+                callback = function()
+                    local current = self.settings:readSetting("highlight_matching")
+                    if current == nil then current = true end
+                    self.settings:saveSetting("highlight_matching", not current)
+                    self.settings:flush()
+                    if self.screen then
+                        self.screen.board_widget:refresh()
+                    end
                 end,
             },
             {
@@ -1336,7 +1373,7 @@ function Sudoku:showGame()
     if self.screen then
         return
     end
-    
+
     local rotation_mode = Screen:getRotationMode()
     self.orig_rotation = rotation_mode
     if bit.band(rotation_mode, 1) == 1 then
