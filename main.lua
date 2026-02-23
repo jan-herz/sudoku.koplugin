@@ -801,7 +801,8 @@ function SudokuBoardWidget:paintTo(bb, x, y)
                     color = Blitbuffer.COLOR_BLACK
                 end
 
-                if not is_error and not is_selected and self.board:isDigitComplete(value) then
+                local grey_completed = self.plugin.settings:readSetting("grey_out_completed_on_board") ~= false
+                if grey_completed and not is_error and not is_selected and self.board:isDigitComplete(value) then
                     color = COLOR_DONE_TEXT
                 end
 
@@ -1289,6 +1290,19 @@ function Sudoku:addToMainMenu(menu_items)
                     local current = self.settings:readSetting("highlight_matching")
                     if current == nil then current = true end
                     self.settings:saveSetting("highlight_matching", not current)
+                    self.settings:flush()
+                    if self.screen then
+                        self.screen.board_widget:refresh()
+                    end
+                end,
+            },
+            {
+                text = _("Grey out complete numbers on board"),
+                checked_func = function() return self.settings:readSetting("grey_out_completed_on_board") ~= false end,
+                callback = function()
+                    local current = self.settings:readSetting("grey_out_completed_on_board")
+                    if current == nil then current = true end
+                    self.settings:saveSetting("grey_out_completed_on_board", not current)
                     self.settings:flush()
                     if self.screen then
                         self.screen.board_widget:refresh()
