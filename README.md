@@ -25,6 +25,8 @@ Huge thanks to the original developer and @appel for the great foundation!
 1. Copy the `sudoku.koplugin` folder into KOReader's `plugins` directory.
 2. Restart the KOReader.
 
+🇭🇺 **Magyar verzió:** A magyar nyelvű menühöz és üzenetekhez másold a "hungarian_version" mappában található "main.lua" fájlt a plugin mappájába, felülírva az eredetit.
+
 ## Credits
 * The original foundation of this project was created with assistance from Windsurf (AI).
 * This fork's improvements were developed with assistance from Google Gemini (AI).
