@@ -27,35 +27,30 @@ local Screen = Device.screen
 local DEFAULT_DIFFICULTY = "medium"
 local DIFFICULTY_ORDER = { "easy", "medium", "hard" }
 local DIFFICULTY_LABELS = {
-    easy = _("Easy"),
-    medium = _("Medium"),
-    hard = _("Hard"),
+    easy = _("Könnyű"),
+    medium = _("Közepes"),
+    hard = _("Nehéz"),
 }
 
--- Állandó színek definíciója
 local COLOR_ERROR_BG = Blitbuffer.colorFromString("#FF0000")
-local COLOR_DONE_TEXT = Blitbuffer.COLOR_GRAY_9 -- Szürke a kész számoknak
+local COLOR_DONE_TEXT = Blitbuffer.COLOR_GRAY_9
 
 local function darkenHexColor(hex, factor)
     if not hex or type(hex) ~= "string" or not hex:match("^#%x%x%x%x%x%x$") then
-        return "#A0A0A0" -- Biztonsági szürke hiba esetén
+        return "#A0A0A0"
     end
-    -- RGB értékek kinyerése és számokká alakítása
     local r = tonumber(hex:sub(2, 3), 16)
     local g = tonumber(hex:sub(4, 5), 16)
     local b = tonumber(hex:sub(6, 7), 16)
 
-    -- Sötétítés a szorzóval (pl. 0. 8 = 20%-kal sötétebb)
     r = math.floor(r * factor)
     g = math.floor(g * factor)
     b = math.floor(b * factor)
 
-    -- Biztosítjuk, hogy 0 és 255 között maradjanak az értékek
     r = math.max(0, math.min(255, r))
     g = math.max(0, math.min(255, g))
     b = math.max(0, math.min(255, b))
 
-    -- Visszaalakítás hex kódba
     return string.format("#%02X%02X%02X", r, g, b)
 end
 
@@ -464,11 +459,11 @@ end
 
 function SudokuBoard:setValue(value, auto_remove)
     if self.reveal_solution then
-        return false, _("Hide result to keep playing.")
+        return false, _("Rejtsd el az eredményt a folytatáshoz.")
     end
     local row, col = self:getSelection()
     if self:isGiven(row, col) then
-        return false, _("This cell is fixed.")
+        return false, _("Ez a cella fix.")
     end
     local prev_value = self.user[row][col]
     local prev_notes = cloneNoteCell(self.notes[row][col])
@@ -477,13 +472,13 @@ function SudokuBoard:setValue(value, auto_remove)
 
     if prev_value == new_value and not prev_notes then
         if not value then
-            return false, _("Cell already empty.")
+            return false, _("A cella már üres.")
         end
         return true
     end
 
     if new_value ~= 0 and prev_value == 0 and self:isDigitComplete(new_value) then
-        return false, _("This number is already used 9 times.")
+        return false, _("Ezt a számot már 9-szer használtad.")
     end
 
     self.user[row][col] = new_value
@@ -594,14 +589,14 @@ end
 
 function SudokuBoard:toggleNoteDigit(value)
     if self.reveal_solution then
-        return false, _("Hide result to keep playing.")
+        return false, _("Rejtsd el az eredményt a folytatáshoz.")
     end
     local row, col = self:getSelection()
     if self:isGiven(row, col) then
-        return false, _("This cell is fixed.")
+        return false, _("Ez a cella fix.")
     end
     if self.user[row][col] ~= 0 then
-        return false, _("Clear the cell before adding notes.")
+        return false, _("Jegyzetelés előtt töröld a cellát.")
     end
     self.notes[row][col] = self.notes[row][col] or {}
     local prev_cell = cloneNoteCell(self.notes[row][col])
@@ -643,7 +638,7 @@ end
 function SudokuBoard:undo()
     local entry = table.remove(self.undo_stack)
     if not entry then
-        return false, _("Nothing to undo.")
+        return false, _("Nincs mit visszavonni.")
     end
     local row, col = entry.row, entry.col
     if entry.type == "value" then
@@ -748,10 +743,9 @@ function SudokuBoardWidget:paintTo(bb, x, y)
         return
     end
 
-local active_bg_hex = self.plugin.settings:readSetting("user_bg_color") or "#E0E0FF"
+    local active_bg_hex = self.plugin.settings:readSetting("user_bg_color") or "#E0E0FF"
     local COLOR_ACTIVE_BG = Blitbuffer.colorFromString(active_bg_hex) or Blitbuffer.COLOR_GRAY_C
 
-    -- Kiszámoljuk a 20%-kal sötétebb (0.8-as szorzó) árnyalatot a kiemeléshez
     local darker_hex = darkenHexColor(active_bg_hex, 0.75)
     local band_highlight = Blitbuffer.colorFromString(darker_hex) or Blitbuffer.COLOR_GRAY_9
 
@@ -760,8 +754,7 @@ local active_bg_hex = self.plugin.settings:readSetting("user_bg_color") or "#E0E
     bb:paintRect(x, y, self.dimen.w, self.dimen.h, Blitbuffer.COLOR_WHITE)
     local sel_row, sel_col = self.board:getSelection()
 
-local selected_value = self.board:getWorkingValue(sel_row, sel_col)
-    -- Lekérdezzük a beállítást. Alapból true (bekapcsolt), hacsak nincs kifejezetten false-ra állítva.
+    local selected_value = self.board:getWorkingValue(sel_row, sel_col)
     local do_highlight = self.plugin.settings:readSetting("highlight_matching") ~= false
 
     if do_highlight and selected_value and selected_value ~= 0 then
@@ -920,7 +913,7 @@ function SudokuScreen:buildLayout()
         buttons = {
             {
                 {
-                    text = _("New game"),
+                    text = _("Új játék"),
                     callback = function()
                         self:onNewGame()
                     end,
@@ -934,13 +927,13 @@ function SudokuScreen:buildLayout()
                 },
                 {
                     id = "show_result",
-                    text = _("Show result"),
+                    text = _("Eredmény mutatása"),
                     callback = function()
                         self:toggleSolution()
                     end,
                 },
                 {
-                    text = _("Close"),
+                    text = _("Bezárás"),
                     callback = function()
                         self:onClose()
                         UIManager:close(self)
@@ -980,20 +973,20 @@ function SudokuScreen:buildLayout()
             end,
         },
         {
-            text = _("Erase"),
+            text = _("Törlés"),
             callback = function()
                 self:onErase()
             end,
         },
         {
-            text = _("Check"),
+            text = _("Ellenőrzés"),
             callback = function()
                 self:checkProgress()
             end,
         },
         {
             id = "undo_button",
-            text = _("Undo"),
+            text = _("Visszavonás"),
             callback = function()
                 self:onUndo()
             end,
@@ -1032,7 +1025,7 @@ function SudokuScreen:buildLayout()
 end
 
 function SudokuScreen:getNoteButtonText()
-    return self.note_mode and _("Note: On") or _("Note: Off")
+    return self.note_mode and _("Jegyzet: Be") or _("Jegyzet: Ki")
 end
 
 function SudokuScreen:updateNoteButton()
@@ -1071,7 +1064,7 @@ end
 
 function SudokuScreen:getDifficultyButtonText()
     local label = DIFFICULTY_LABELS[self.board.difficulty] or self.board.difficulty
-    return T(_("Difficulty: %1"), label)
+    return T(_("Nehézség: %1"), label)
 end
 
 function SudokuScreen:updateDifficultyButton()
@@ -1114,7 +1107,7 @@ function SudokuScreen:openDifficultyMenu()
     end
 
     menu = Menu:new{
-        title = _("Select difficulty"),
+        title = _("Nehézség kiválasztása"),
         item_table = items,
         width = math.floor(Screen:getWidth() * 0.7),
         height = math.floor(Screen:getHeight() * 0.9),
@@ -1130,7 +1123,7 @@ function SudokuScreen:updateStatus(message)
         status = message
     else
         local remaining = self.board:getRemainingCells()
-        status = "Üres cellák: " .. tostring(remaining)
+        status = T(_("Üres cellák: %1"), remaining)
 
         local parts = {}
         if self.board:isShowingSolution() then
@@ -1181,7 +1174,7 @@ function SudokuScreen:onDigit(value)
     self:updateUndoButton()
     self:updateDigitButtons()
     if self.board:isSolved() then
-        UIManager:show(InfoMessage:new{ text = _("Puzzle complete!"), timeout = 4 })
+        UIManager:show(InfoMessage:new{ text = _("A rejtvény kész!"), timeout = 4 })
     end
 end
 
@@ -1215,14 +1208,14 @@ function SudokuScreen:toggleSolution()
     self.plugin:saveState()
     self.board_widget:refresh()
     self:ensureShowButtonState()
-    self:updateStatus(self.board:isShowingSolution() and _("Showing the solution.") or nil)
+    self:updateStatus(self.board:isShowingSolution() and _("Megoldás mutatása.") or nil)
 end
 
 function SudokuScreen:ensureShowButtonState()
     if not self.show_result_button then
         return
     end
-    local text = self.board:isShowingSolution() and _("Hide result") or _("Show result")
+    local text = self.board:isShowingSolution() and _("Eredmény elrejtése") or _("Eredmény mutatása")
     local width = self.show_result_button.width
     self.show_result_button:setText(text, width)
 end
@@ -1234,10 +1227,9 @@ function SudokuScreen:checkProgress()
     self.plugin:saveState()
 
     if self.board:isSolved() then
-        self:updateStatus(_("Gratulálok! Megoldottad! :)"))
+        self:updateStatus(_("Gratulálok! Megoldottad."))
     elseif has_error then
-        -- Ha bárhol hiba van, azonnal jelezze
-        self:updateStatus(_("Hiba van a táblán!"))
+        self:updateStatus(_("Hibák vannak a táblán!"))
     else
         self:updateStatus(_("Eddig minden jó, folytasd!"))
     end
