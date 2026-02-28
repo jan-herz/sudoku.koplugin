@@ -1284,79 +1284,84 @@ function Sudoku:addToMainMenu(menu_items)
                 end,
             },
             {
-                text = _("Highlight matching numbers"),
-                checked_func = function() return self.settings:readSetting("highlight_matching") ~= false end,
-                callback = function()
-                    local current = self.settings:readSetting("highlight_matching")
-                    if current == nil then current = true end
-                    self.settings:saveSetting("highlight_matching", not current)
-                    self.settings:flush()
-                    if self.screen then
-                        self.screen.board_widget:refresh()
-                    end
-                end,
-            },
-            {
-                text = _("Grey out complete numbers on board"),
-                checked_func = function() return self.settings:readSetting("grey_out_completed_on_board") ~= false end,
-                callback = function()
-                    local current = self.settings:readSetting("grey_out_completed_on_board")
-                    if current == nil then current = true end
-                    self.settings:saveSetting("grey_out_completed_on_board", not current)
-                    self.settings:flush()
-                    if self.screen then
-                        self.screen.board_widget:refresh()
-                    end
-                end,
-            },
-            {
-                text = _("Auto-remove notes (row/col/box)"),
-                checked_func = function() return self.settings:readSetting("auto_remove_notes") == true end,
-                callback = function()
-                    local current = self.settings:readSetting("auto_remove_notes")
-                    self.settings:saveSetting("auto_remove_notes", not current)
-                    self.settings:flush()
-                end,
-            },
-            {
-                text = _("Active cell background"),
-                keep_menu_open = true,
-                callback = function()
-                    local current_color = self.settings:readSetting("user_bg_color") or "#E0E0FF"
-                    local input_dialog
-                    input_dialog = InputDialog:new{
-                        title = _("Hex code for active cell\n(e.g., #E0E0FF light blue, #FFFFD0 yellow)"),
-                        input = current_color,
-                        buttons = {
-                            {
-                                {
-                                    text = _("Cancel"),
-                                    id = "close",
-                                    callback = function()
-                                        UIManager:close(input_dialog)
-                                    end,
+                text = _("Options"),
+                sub_item_table = {
+                    {
+                        text = _("Highlight matching numbers"),
+                        checked_func = function() return self.settings:readSetting("highlight_matching") ~= false end,
+                        callback = function()
+                            local current = self.settings:readSetting("highlight_matching")
+                            if current == nil then current = true end
+                            self.settings:saveSetting("highlight_matching", not current)
+                            self.settings:flush()
+                            if self.screen then
+                                self.screen.board_widget:refresh()
+                            end
+                        end,
+                    },
+                    {
+                        text = _("Grey out complete numbers on board"),
+                        checked_func = function() return self.settings:readSetting("grey_out_completed_on_board") ~= false end,
+                        callback = function()
+                            local current = self.settings:readSetting("grey_out_completed_on_board")
+                            if current == nil then current = true end
+                            self.settings:saveSetting("grey_out_completed_on_board", not current)
+                            self.settings:flush()
+                            if self.screen then
+                                self.screen.board_widget:refresh()
+                            end
+                        end,
+                    },
+                    {
+                        text = _("Auto-remove notes (row/col/box)"),
+                        checked_func = function() return self.settings:readSetting("auto_remove_notes") == true end,
+                        callback = function()
+                            local current = self.settings:readSetting("auto_remove_notes")
+                            self.settings:saveSetting("auto_remove_notes", not current)
+                            self.settings:flush()
+                        end,
+                    },
+                    {
+                        text = _("Active cell background"),
+                        keep_menu_open = true,
+                        callback = function()
+                            local current_color = self.settings:readSetting("user_bg_color") or "#E0E0FF"
+                            local input_dialog
+                            input_dialog = InputDialog:new{
+                                title = _("Hex code for active cell\n(e.g., #E0E0FF light blue, #FFFFD0 yellow)"),
+                                input = current_color,
+                                buttons = {
+                                    {
+                                        {
+                                            text = _("Cancel"),
+                                            id = "close",
+                                            callback = function()
+                                                UIManager:close(input_dialog)
+                                            end,
+                                        },
+                                        {
+                                            text = _("Set"),
+                                            is_enter_default = true,
+                                            callback = function()
+                                                local val = input_dialog:getInputText()
+                                                if val:match("^#%x%x%x%x%x%x$") then
+                                                    self.settings:saveSetting("user_bg_color", val)
+                                                    self.settings:flush()
+                                                    if self.screen then
+                                                        self.screen.board_widget:refresh()
+                                                    end
+                                                end
+                                                UIManager:close(input_dialog)
+                                            end,
+                                        },
+                                    },
                                 },
-                                {
-                                    text = _("Set"),
-                                    is_enter_default = true,
-                                    callback = function()
-                                        local val = input_dialog:getInputText()
-                                        if val:match("^#%x%x%x%x%x%x$") then
-                                            self.settings:saveSetting("user_bg_color", val)
-                                            self.settings:flush()
-                                            if self.screen then
-                                                self.screen.board_widget:refresh()
-                                            end
-                                        end
-                                        UIManager:close(input_dialog)
-                                    end,
-                                },
-                            },
-                        },
+                            }
+                            UIManager:show(input_dialog)
+                            input_dialog:onShowKeyboard()
+                        end,
                     }
-                    UIManager:show(input_dialog)
-                    input_dialog:onShowKeyboard()
-                end,
+                }
             }
         }
     }
