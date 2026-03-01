@@ -817,7 +817,7 @@ function SudokuBoardWidget:paintTo(bb, x, y)
                 local text_x = cell_x + math.floor((cell - text_w) / 2)
 
                 if is_given then
-                    local off = math.max(1, math.floor(cell / 20))
+                    local off = 2 -- Fix numbers thickness
                     RenderText:renderUtf8Text(bb, text_x - off, baseline, self.number_face, text, false, false, color)
                     RenderText:renderUtf8Text(bb, text_x + off, baseline, self.number_face, text, false, false, color)
                     RenderText:renderUtf8Text(bb, text_x, baseline - off, self.number_face, text, false, false, color)
@@ -827,7 +827,7 @@ function SudokuBoardWidget:paintTo(bb, x, y)
                     RenderText:renderUtf8Text(bb, text_x - off, baseline + off, self.number_face, text, false, false, color)
                     RenderText:renderUtf8Text(bb, text_x + off, baseline + off, self.number_face, text, false, false, color)
                 end
-
+                
                 RenderText:renderUtf8Text(bb, text_x, baseline, self.number_face, text, false, false, color)
             else
                 if notes then
