@@ -1063,8 +1063,7 @@ function SudokuScreen:toggleNoteMode()
 end
 
 function SudokuScreen:getDifficultyButtonText()
-    local label = DIFFICULTY_LABELS[self.board.difficulty] or self.board.difficulty
-    return T(_("Nehézség: %1"), label)
+    return _("Beállítások")
 end
 
 function SudokuScreen:updateDifficultyButton()
@@ -1077,6 +1076,7 @@ end
 
 function SudokuScreen:openDifficultyMenu()
     local menu
+
     local function selectDifficulty(level)
         if level ~= self.board.difficulty then
             self.board:generate(level)
@@ -1088,28 +1088,100 @@ function SudokuScreen:openDifficultyMenu()
         else
             self:updateStatus()
         end
-        self:updateDifficultyButton()
-        if menu then
-            UIManager:close(menu)
-        end
+        if menu then UIManager:close(menu) end
         return true
     end
 
     local items = {}
+
+    table.insert(items, { text = "--- " .. _("Új játék nehézsége") .. " ---", is_text_only = true })
     for _, level in ipairs(DIFFICULTY_ORDER) do
-        items[#items + 1] = {
-            text = DIFFICULTY_LABELS[level] or level,
-            checked = (level == self.board.difficulty),
-            callback = function()
-                return selectDifficulty(level)
-            end,
-        }
+        local is_active = (level == self.board.difficulty)
+        table.insert(items, {
+            text = (is_active and "» " or "   ") .. (DIFFICULTY_LABELS[level] or level),
+            callback = function() return selectDifficulty(level) end,
+        })
     end
 
+    table.insert(items, { text = "--- " .. _("Megjelenés és működés") .. " ---", is_text_only = true })
+
+    local hl_on = self.plugin.settings:readSetting("highlight_matching") ~= false
+    table.insert(items, {
+        text = (hl_on and "[ x ] " or "[   ] ") .. _("Egyező számok kiemelése"),
+        callback = function()
+            self.plugin.settings:saveSetting("highlight_matching", not hl_on)
+            self.plugin.settings:flush()
+            self.board_widget:refresh()
+            if menu then UIManager:close(menu) end
+        end,
+    })
+
+    local grey_on = self.plugin.settings:readSetting("grey_out_completed_on_board") ~= false
+    table.insert(items, {
+        text = (grey_on and "[ x ] " or "[   ] ") .. _("Kész számok szürkítése a táblán"),
+        callback = function()
+            self.plugin.settings:saveSetting("grey_out_completed_on_board", not grey_on)
+            self.plugin.settings:flush()
+            self.board_widget:refresh()
+            if menu then UIManager:close(menu) end
+        end,
+    })
+
+    local auto_rm = self.plugin.settings:readSetting("auto_remove_notes") == true
+    table.insert(items, {
+        text = (auto_rm and "[ x ] " or "[   ] ") .. _("Automatikus jegyzet törlés"),
+        callback = function()
+            self.plugin.settings:saveSetting("auto_remove_notes", not auto_rm)
+            self.plugin.settings:flush()
+            if menu then UIManager:close(menu) end
+        end,
+    })
+
+    local current_color = self.plugin.settings:readSetting("user_bg_color") or "#E0E0FF"
+    table.insert(items, {
+        text = _("Aktív cella háttere") .. " (" .. current_color .. ")",
+        callback = function()
+            if menu then UIManager:close(menu) end
+
+            local InputDialog = require("ui/widget/inputdialog")
+            local input_dialog
+            input_dialog = InputDialog:new{
+                title = _("Hex kód az aktív cellához\n(pl. #E0E0FF világoskék, #FFFFD0 sárga)"),
+                input = current_color,
+                buttons = {
+                    {
+                        {
+                            text = _("Mégse"),
+                            id = "close",
+                            callback = function()
+                                UIManager:close(input_dialog)
+                            end,
+                        },
+                        {
+                            text = _("Beállítás"),
+                            is_enter_default = true,
+                            callback = function()
+                                local val = input_dialog:getInputText()
+                                if val:match("^#%x%x%x%x%x%x$") then
+                                    self.plugin.settings:saveSetting("user_bg_color", val)
+                                    self.plugin.settings:flush()
+                                    self.board_widget:refresh()
+                                end
+                                UIManager:close(input_dialog)
+                            end,
+                        },
+                    },
+                },
+            }
+            UIManager:show(input_dialog)
+            input_dialog:onShowKeyboard()
+        end,
+    })
+
     menu = Menu:new{
-        title = _("Nehézség kiválasztása"),
+        title = _("Beállítások"),
         item_table = items,
-        width = math.floor(Screen:getWidth() * 0.7),
+        width = math.floor(Screen:getWidth() * 0.85),
         height = math.floor(Screen:getHeight() * 0.9),
         disable_footer_padding = true,
         show_parent = self,
@@ -1227,7 +1299,7 @@ function SudokuScreen:checkProgress()
     self.plugin:saveState()
 
     if self.board:isSolved() then
-        self:updateStatus(_("Gratulálok! Megoldottad."))
+        self:updateStatus(_("Gratulálok! Megoldottad! ^-^"))
     elseif has_error then
         self:updateStatus(_("Hibák vannak a táblán!"))
     else
@@ -1276,94 +1348,9 @@ function Sudoku:addToMainMenu(menu_items)
     menu_items.sudoku = {
         text = _("Sudoku"),
         sorting_hint = "tools",
-        sub_item_table = {
-            {
-                text = _("Játék indítása"),
-                callback = function()
-                    self:showGame()
-                end,
-            },
-            {
-                text = _("Beállítások"),
-                sub_item_table = {
-                    {
-                        text = _("Egyező számok kiemelése"),
-                        checked_func = function() return self.settings:readSetting("highlight_matching") ~= false end,
-                        callback = function()
-                            local current = self.settings:readSetting("highlight_matching")
-                            if current == nil then current = true end
-                            self.settings:saveSetting("highlight_matching", not current)
-                            self.settings:flush()
-                            if self.screen then
-                                self.screen.board_widget:refresh()
-                            end
-                        end,
-                    },
-                    {
-                        text = _("Kész számok szürkítése a táblán"),
-                        checked_func = function() return self.settings:readSetting("grey_out_completed_on_board") ~= false end,
-                        callback = function()
-                            local current = self.settings:readSetting("grey_out_completed_on_board")
-                            if current == nil then current = true end
-                            self.settings:saveSetting("grey_out_completed_on_board", not current)
-                            self.settings:flush()
-                            if self.screen then
-                                self.screen.board_widget:refresh()
-                            end
-                        end,
-                    },
-                    {
-                        text = _("Automatikus jegyzet törlés (sor/oszlop/blokk)"),
-                        checked_func = function() return self.settings:readSetting("auto_remove_notes") == true end,
-                        callback = function()
-                            local current = self.settings:readSetting("auto_remove_notes")
-                            self.settings:saveSetting("auto_remove_notes", not current)
-                            self.settings:flush()
-                        end,
-                    },
-                    {
-                        text = _("Aktív cella háttere"),
-                        keep_menu_open = true,
-                        callback = function()
-                            local current_color = self.settings:readSetting("user_bg_color") or "#E0E0FF"
-                            local input_dialog
-                            input_dialog = InputDialog:new{
-                                title = _("Hex kód az aktív cellához\n(pl. #E0E0FF világoskék, #FFFFD0 sárga)"),
-                                input = current_color,
-                                buttons = {
-                                    {
-                                        {
-                                            text = _("Mégse"),
-                                            id = "close",
-                                            callback = function()
-                                                UIManager:close(input_dialog)
-                                            end,
-                                        },
-                                        {
-                                            text = _("Beállítás"),
-                                            is_enter_default = true,
-                                            callback = function()
-                                                local val = input_dialog:getInputText()
-                                                if val:match("^#%x%x%x%x%x%x$") then
-                                                    self.settings:saveSetting("user_bg_color", val)
-                                                    self.settings:flush()
-                                                    if self.screen then
-                                                        self.screen.board_widget:refresh()
-                                                    end
-                                                end
-                                                UIManager:close(input_dialog)
-                                            end,
-                                        },
-                                    },
-                                },
-                            }
-                            UIManager:show(input_dialog)
-                            input_dialog:onShowKeyboard()
-                        end,
-                    }
-                }
-            }
-        }
+        callback = function()
+            self:showGame()
+        end,
     }
 end
 
