@@ -459,7 +459,7 @@ end
 
 function SudokuBoard:setValue(value, auto_remove)
     if self.reveal_solution then
-        return false, _("Hide result to keep playing.")
+        return false, _("Hide solution to continue.")
     end
     local row, col = self:getSelection()
     if self:isGiven(row, col) then
@@ -472,13 +472,13 @@ function SudokuBoard:setValue(value, auto_remove)
 
     if prev_value == new_value and not prev_notes then
         if not value then
-            return false, _("Cell already empty.")
+            return false, _("Cell is already empty.")
         end
         return true
     end
 
     if new_value ~= 0 and prev_value == 0 and self:isDigitComplete(new_value) then
-        return false, _("This number is already used 9 times.")
+        return false, _("You already have 9 of this digit.")
     end
 
     self.user[row][col] = new_value
@@ -589,14 +589,14 @@ end
 
 function SudokuBoard:toggleNoteDigit(value)
     if self.reveal_solution then
-        return false, _("Hide result to keep playing.")
+        return false, _("Hide solution to continue.")
     end
     local row, col = self:getSelection()
     if self:isGiven(row, col) then
         return false, _("This cell is fixed.")
     end
     if self.user[row][col] ~= 0 then
-        return false, _("Clear the cell before adding notes.")
+        return false, _("Clear cell before noting.")
     end
     self.notes[row][col] = self.notes[row][col] or {}
     local prev_cell = cloneNoteCell(self.notes[row][col])
@@ -746,7 +746,7 @@ function SudokuBoardWidget:paintTo(bb, x, y)
     local active_bg_hex = self.plugin.settings:readSetting("user_bg_color") or "#E0E0FF"
     local COLOR_ACTIVE_BG = Blitbuffer.colorFromString(active_bg_hex) or Blitbuffer.COLOR_GRAY_C
 
-    local darker_hex = darkenHexColor(active_bg_hex, 0.75) -- "Highlight matching numbers" color: 0.9 is lighter, 0.6 is darker
+    local darker_hex = darkenHexColor(active_bg_hex, 0.75)
     local band_highlight = Blitbuffer.colorFromString(darker_hex) or Blitbuffer.COLOR_GRAY_9
 
     self.paint_rect = Geom:new{ x = x, y = y, w = self.dimen.w, h = self.dimen.h }
@@ -817,7 +817,7 @@ function SudokuBoardWidget:paintTo(bb, x, y)
                 local text_x = cell_x + math.floor((cell - text_w) / 2)
 
                 if is_given then
-                    local off = 2 -- Fix numbers thickness
+                    local off = 2
                     RenderText:renderUtf8Text(bb, text_x - off, baseline, self.number_face, text, false, false, color)
                     RenderText:renderUtf8Text(bb, text_x + off, baseline, self.number_face, text, false, false, color)
                     RenderText:renderUtf8Text(bb, text_x, baseline - off, self.number_face, text, false, false, color)
@@ -827,7 +827,7 @@ function SudokuBoardWidget:paintTo(bb, x, y)
                     RenderText:renderUtf8Text(bb, text_x - off, baseline + off, self.number_face, text, false, false, color)
                     RenderText:renderUtf8Text(bb, text_x + off, baseline + off, self.number_face, text, false, false, color)
                 end
-                
+
                 RenderText:renderUtf8Text(bb, text_x, baseline, self.number_face, text, false, false, color)
             else
                 if notes then
@@ -869,7 +869,7 @@ function SudokuScreen:init()
 
     local board_size = math.floor(math.min(Screen:getWidth(), Screen:getHeight()) * 0.82)
     self.status_text = TextBoxWidget:new{
-        text = _("Tap a cell, then pick a number."),
+        text = _("Select a cell, then a digit."),
         face = Font:getFace("smallinfofont"),
         width = board_size,
         alignment = "center",
@@ -927,7 +927,7 @@ function SudokuScreen:buildLayout()
                 },
                 {
                     id = "show_result",
-                    text = _("Show result"),
+                    text = _("Show solution"),
                     callback = function()
                         self:toggleSolution()
                     end,
@@ -1063,8 +1063,7 @@ function SudokuScreen:toggleNoteMode()
 end
 
 function SudokuScreen:getDifficultyButtonText()
-    local label = DIFFICULTY_LABELS[self.board.difficulty] or self.board.difficulty
-    return T(_("Difficulty: %1"), label)
+    return _("Settings")
 end
 
 function SudokuScreen:updateDifficultyButton()
@@ -1077,6 +1076,7 @@ end
 
 function SudokuScreen:openDifficultyMenu()
     local menu
+
     local function selectDifficulty(level)
         if level ~= self.board.difficulty then
             self.board:generate(level)
@@ -1088,28 +1088,100 @@ function SudokuScreen:openDifficultyMenu()
         else
             self:updateStatus()
         end
-        self:updateDifficultyButton()
-        if menu then
-            UIManager:close(menu)
-        end
+        if menu then UIManager:close(menu) end 
         return true
     end
 
     local items = {}
+
+    table.insert(items, { text = "--- " .. _("Difficulty for new game") .. " ---", is_text_only = true })
     for _, level in ipairs(DIFFICULTY_ORDER) do
-        items[#items + 1] = {
-            text = DIFFICULTY_LABELS[level] or level,
-            checked = (level == self.board.difficulty),
-            callback = function()
-                return selectDifficulty(level)
-            end,
-        }
+        local is_active = (level == self.board.difficulty)
+        table.insert(items, {
+            text = (is_active and "» " or "   ") .. (DIFFICULTY_LABELS[level] or level),
+            callback = function() return selectDifficulty(level) end,
+        })
     end
 
+    table.insert(items, { text = "--- " .. _("Appearance and behavior") .. " ---", is_text_only = true })
+
+    local hl_on = self.plugin.settings:readSetting("highlight_matching") ~= false
+    table.insert(items, {
+        text = (hl_on and "[ x ] " or "[   ] ") .. _("Highlight matching numbers"),
+        callback = function()
+            self.plugin.settings:saveSetting("highlight_matching", not hl_on)
+            self.plugin.settings:flush()
+            self.board_widget:refresh()
+            if menu then UIManager:close(menu) end
+        end,
+    })
+
+    local grey_on = self.plugin.settings:readSetting("grey_out_completed_on_board") ~= false
+    table.insert(items, {
+        text = (grey_on and "[ x ] " or "[   ] ") .. _("Grey out completed numbers"),
+        callback = function()
+            self.plugin.settings:saveSetting("grey_out_completed_on_board", not grey_on)
+            self.plugin.settings:flush()
+            self.board_widget:refresh()
+            if menu then UIManager:close(menu) end
+        end,
+    })
+
+    local auto_rm = self.plugin.settings:readSetting("auto_remove_notes") == true
+    table.insert(items, {
+        text = (auto_rm and "[ x ] " or "[   ] ") .. _("Auto-remove notes"),
+        callback = function()
+            self.plugin.settings:saveSetting("auto_remove_notes", not auto_rm)
+            self.plugin.settings:flush()
+            if menu then UIManager:close(menu) end
+        end,
+    })
+
+    local current_color = self.plugin.settings:readSetting("user_bg_color") or "#E0E0FF"
+    table.insert(items, {
+        text = _("Active cell background") .. " (" .. current_color .. ")",
+        callback = function()
+            if menu then UIManager:close(menu) end 
+            
+            local InputDialog = require("ui/widget/inputdialog")
+            local input_dialog
+            input_dialog = InputDialog:new{
+                title = _("Hex code for active cell\n(e.g., #E0E0FF light blue, #FFFFD0 yellow)"),
+                input = current_color,
+                buttons = {
+                    {
+                        {
+                            text = _("Cancel"),
+                            id = "close",
+                            callback = function()
+                                UIManager:close(input_dialog)
+                            end,
+                        },
+                        {
+                            text = _("Set"),
+                            is_enter_default = true,
+                            callback = function()
+                                local val = input_dialog:getInputText()
+                                if val:match("^#%x%x%x%x%x%x$") then
+                                    self.plugin.settings:saveSetting("user_bg_color", val)
+                                    self.plugin.settings:flush()
+                                    self.board_widget:refresh()
+                                end
+                                UIManager:close(input_dialog)
+                            end,
+                        },
+                    },
+                },
+            }
+            UIManager:show(input_dialog)
+            input_dialog:onShowKeyboard()
+        end,
+    })
+
     menu = Menu:new{
-        title = _("Select difficulty"),
+        title = _("Settings"),
         item_table = items,
-        width = math.floor(Screen:getWidth() * 0.7),
+        width = math.floor(Screen:getWidth() * 0.85),
         height = math.floor(Screen:getHeight() * 0.9),
         disable_footer_padding = true,
         show_parent = self,
@@ -1127,9 +1199,9 @@ function SudokuScreen:updateStatus(message)
 
         local parts = {}
         if self.board:isShowingSolution() then
-            table.insert(parts, _("Showing result"))
+            table.insert(parts, _("Showing solution"))
         elseif self.board:isSolved() then
-            table.insert(parts, _("Congratulations! Puzzle solved."))
+            table.insert(parts, _("Congratulations! You solved it."))
         end
 
         if self.note_mode then
@@ -1174,7 +1246,7 @@ function SudokuScreen:onDigit(value)
     self:updateUndoButton()
     self:updateDigitButtons()
     if self.board:isSolved() then
-        UIManager:show(InfoMessage:new{ text = _("Puzzle complete!"), timeout = 4 })
+        UIManager:show(InfoMessage:new{ text = _("Puzzle completed!"), timeout = 4 })
     end
 end
 
@@ -1208,14 +1280,14 @@ function SudokuScreen:toggleSolution()
     self.plugin:saveState()
     self.board_widget:refresh()
     self:ensureShowButtonState()
-    self:updateStatus(self.board:isShowingSolution() and _("Showing the solution.") or nil)
+    self:updateStatus(self.board:isShowingSolution() and _("Showing solution") or nil)
 end
 
 function SudokuScreen:ensureShowButtonState()
     if not self.show_result_button then
         return
     end
-    local text = self.board:isShowingSolution() and _("Hide result") or _("Show result")
+    local text = self.board:isShowingSolution() and _("Hide solution") or _("Show solution")
     local width = self.show_result_button.width
     self.show_result_button:setText(text, width)
 end
@@ -1227,11 +1299,11 @@ function SudokuScreen:checkProgress()
     self.plugin:saveState()
 
     if self.board:isSolved() then
-        self:updateStatus(_("Congratulations! Puzzle solved."))
+        self:updateStatus(_("Congratulations! You solved it! ^-^"))
     elseif has_error then
-        self:updateStatus(_("There are mistakes (red)."))
+        self:updateStatus(_("Errors found on board!"))
     else
-        self:updateStatus(_("Everything looks good so far!"))
+        self:updateStatus(_("Looking good so far, keep going!"))
     end
 end
 
@@ -1247,7 +1319,7 @@ function SudokuScreen:onUndo()
         return
     end
     self.board_widget:refresh()
-    self:updateStatus(_("Last move undone."))
+    self:updateStatus(_("Undo successful."))
     self.plugin:saveState()
     self:updateUndoButton()
     self:updateDigitButtons()
@@ -1276,94 +1348,9 @@ function Sudoku:addToMainMenu(menu_items)
     menu_items.sudoku = {
         text = _("Sudoku"),
         sorting_hint = "tools",
-        sub_item_table = {
-            {
-                text = _("Play Sudoku"),
-                callback = function()
-                    self:showGame()
-                end,
-            },
-            {
-                text = _("Options"),
-                sub_item_table = {
-                    {
-                        text = _("Highlight matching numbers"),
-                        checked_func = function() return self.settings:readSetting("highlight_matching") ~= false end,
-                        callback = function()
-                            local current = self.settings:readSetting("highlight_matching")
-                            if current == nil then current = true end
-                            self.settings:saveSetting("highlight_matching", not current)
-                            self.settings:flush()
-                            if self.screen then
-                                self.screen.board_widget:refresh()
-                            end
-                        end,
-                    },
-                    {
-                        text = _("Grey out complete numbers on board"),
-                        checked_func = function() return self.settings:readSetting("grey_out_completed_on_board") ~= false end,
-                        callback = function()
-                            local current = self.settings:readSetting("grey_out_completed_on_board")
-                            if current == nil then current = true end
-                            self.settings:saveSetting("grey_out_completed_on_board", not current)
-                            self.settings:flush()
-                            if self.screen then
-                                self.screen.board_widget:refresh()
-                            end
-                        end,
-                    },
-                    {
-                        text = _("Auto-remove notes (row/col/box)"),
-                        checked_func = function() return self.settings:readSetting("auto_remove_notes") == true end,
-                        callback = function()
-                            local current = self.settings:readSetting("auto_remove_notes")
-                            self.settings:saveSetting("auto_remove_notes", not current)
-                            self.settings:flush()
-                        end,
-                    },
-                    {
-                        text = _("Active cell background"),
-                        keep_menu_open = true,
-                        callback = function()
-                            local current_color = self.settings:readSetting("user_bg_color") or "#E0E0FF"
-                            local input_dialog
-                            input_dialog = InputDialog:new{
-                                title = _("Hex code for active cell\n(e.g., #E0E0FF light blue, #FFFFD0 yellow)"),
-                                input = current_color,
-                                buttons = {
-                                    {
-                                        {
-                                            text = _("Cancel"),
-                                            id = "close",
-                                            callback = function()
-                                                UIManager:close(input_dialog)
-                                            end,
-                                        },
-                                        {
-                                            text = _("Set"),
-                                            is_enter_default = true,
-                                            callback = function()
-                                                local val = input_dialog:getInputText()
-                                                if val:match("^#%x%x%x%x%x%x$") then
-                                                    self.settings:saveSetting("user_bg_color", val)
-                                                    self.settings:flush()
-                                                    if self.screen then
-                                                        self.screen.board_widget:refresh()
-                                                    end
-                                                end
-                                                UIManager:close(input_dialog)
-                                            end,
-                                        },
-                                    },
-                                },
-                            }
-                            UIManager:show(input_dialog)
-                            input_dialog:onShowKeyboard()
-                        end,
-                    }
-                }
-            }
-        }
+        callback = function()
+            self:showGame()
+        end,
     }
 end
 
