@@ -1075,7 +1075,7 @@ function SudokuScreen:updateDifficultyButton()
 end
 
 function SudokuScreen:openDifficultyMenu()
-    local menu
+    local menu 
 
     local function selectDifficulty(level)
         if level ~= self.board.difficulty then
@@ -1094,7 +1094,7 @@ function SudokuScreen:openDifficultyMenu()
 
     local items = {}
 
-    table.insert(items, { text = "--- " .. _("Difficulty for new game") .. " ---", is_text_only = true })
+    table.insert(items, { text = "--- " .. _("Difficulty") .. " ---", is_text_only = true })
     for _, level in ipairs(DIFFICULTY_ORDER) do
         local is_active = (level == self.board.difficulty)
         table.insert(items, {
@@ -1103,7 +1103,7 @@ function SudokuScreen:openDifficultyMenu()
         })
     end
 
-    table.insert(items, { text = "--- " .. _("Appearance and behavior") .. " ---", is_text_only = true })
+    table.insert(items, { text = "--- " .. _("Settings") .. " ---", is_text_only = true })
 
     local hl_on = self.plugin.settings:readSetting("highlight_matching") ~= false
     table.insert(items, {
@@ -1118,7 +1118,7 @@ function SudokuScreen:openDifficultyMenu()
 
     local grey_on = self.plugin.settings:readSetting("grey_out_completed_on_board") ~= false
     table.insert(items, {
-        text = (grey_on and "[ x ] " or "[   ] ") .. _("Grey out completed numbers"),
+        text = (grey_on and "[ x ] " or "[   ] ") .. _("Grey out completed numbers on board"),
         callback = function()
             self.plugin.settings:saveSetting("grey_out_completed_on_board", not grey_on)
             self.plugin.settings:flush()
@@ -1129,7 +1129,7 @@ function SudokuScreen:openDifficultyMenu()
 
     local auto_rm = self.plugin.settings:readSetting("auto_remove_notes") == true
     table.insert(items, {
-        text = (auto_rm and "[ x ] " or "[   ] ") .. _("Auto-remove notes"),
+        text = (auto_rm and "[ x ] " or "[   ] ") .. _("Auto remove notes"),
         callback = function()
             self.plugin.settings:saveSetting("auto_remove_notes", not auto_rm)
             self.plugin.settings:flush()
